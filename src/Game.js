@@ -15,6 +15,8 @@ class Game extends Component {
 
     this.highlightCell = this.highlightCell.bind(this);
     this.markCell = this.markCell.bind(this);
+
+    this.visited = [];
   }
 
   componentDidMount() {
@@ -22,7 +24,7 @@ class Game extends Component {
   }
 
   random(min, max) {
-    return Math.floor(Math.random() * (max - min)) + min
+    return Math.floor(Math.random() * (max - min)) + min;
   }
 
   resetGameState() {
@@ -39,7 +41,7 @@ class Game extends Component {
         newMarkedState[y][x] = false;
       }
     }
-    
+
     // doesn't matter that set state directly because
     // Don't want the display to update
     this.state.highlighted = newHighlightState;
@@ -48,7 +50,7 @@ class Game extends Component {
     // generate a random start coordinate
     let startX = this.random(0, this.state.width);
     let startY = this.random(0, this.state.height);
-    newHighlightState[startY][startX] = true
+    newHighlightState[startY][startX] = true;
 
     let totalColored = this.random(0, this.state.width * this.state.height - 1); // minus one for the base one
 
@@ -58,7 +60,10 @@ class Game extends Component {
       let currentX = this.random(0, this.state.width);
       let currentY = this.random(0, this.state.height);
       // also shouldn't be already highlighted
-      while (!this.adjacentHighlighted(currentX, currentY) || this.checkHighlighted(currentX, currentY)) {
+      while (
+        !this.adjacentHighlighted(currentX, currentY) ||
+        this.checkHighlighted(currentX, currentY)
+      ) {
         currentX = this.random(0, this.state.width);
         currentY = this.random(0, this.state.height);
       }
@@ -67,16 +72,18 @@ class Game extends Component {
       newHighlightState[currentY][currentX] = true;
     }
 
-    
     // Do this until a random number is reached
-    const totalGivenNumbers = this.random(1, totalColored)
-    console.log("total given", totalGivenNumbers)
+    const totalGivenNumbers = this.random(1, totalColored);
+    console.log("total given", totalGivenNumbers);
     for (let i = 0; i < totalGivenNumbers; i++) {
       // pick a random coordinate
       let currentX = this.random(0, this.state.width);
       let currentY = this.random(0, this.state.height);
       // make sure it's highlighted and not already numbered
-      while (!this.checkHighlighted(currentX, currentY) || this.state.gameState[currentY][currentX] !== ".") {
+      while (
+        !this.checkHighlighted(currentX, currentY) ||
+        this.state.gameState[currentY][currentX] !== "."
+      ) {
         currentX = this.random(0, this.state.width);
         currentY = this.random(0, this.state.height);
       }
@@ -88,7 +95,6 @@ class Game extends Component {
       newGameState[currentY][currentX] = visible;
     }
 
-
     for (let y = 0; y < this.state.height; y++) {
       newHighlightState[y] = [];
       for (let x = 0; x < this.state.width; x++) {
@@ -96,6 +102,7 @@ class Game extends Component {
       }
     }
 
+    this.resetVisited();
     this.setState({
       gameState: newGameState,
       highlighted: newHighlightState,
@@ -104,8 +111,28 @@ class Game extends Component {
     });
   }
 
+  resetVisited() {
+    const emptyMatrix = [];
+    console.log("right after initialization", emptyMatrix);
+    for (let y = 0; y < this.state.height; y++) {
+      emptyMatrix[y] = [];
+      for (let x = 0; x < this.state.width; x++) {
+        emptyMatrix[y][x] = false;
+      }
+      console.log("partially generated matrix", emptyMatrix);
+    }
+
+    console.log("should be resetting to ", emptyMatrix);
+    this.visited = emptyMatrix;
+    console.log("resetting to ", this.visited);
+  }
+
+  checkExists(x, y) {
+    return x >= 0 && x < this.state.width && y >= 0 && y < this.state.height;
+  }
+
   checkHighlighted(x, y) {
-    if (x >= 0 && x < this.state.width && y >= 0 && y < this.state.height) {
+    if (this.checkExists(x, y)) {
       return this.state.highlighted[y][x];
     }
 
@@ -127,7 +154,7 @@ class Game extends Component {
   }
 
   countVisibleCells(i, j) {
-    let currentNum = 1
+    let currentNum = 1;
 
     for (let x = i + 1; x < this.state.width; x++) {
       if (this.checkHighlighted(x, j)) {
@@ -165,24 +192,71 @@ class Game extends Component {
   }
 
   checkCorrect() {
-    // not currently working because if it's connected to something
-    // but not to the rest of it.
-    // check highlights are all connected
-
-    // for new algorithm:
     // pick a random highlighted cell as the starting point
+    let currentX = this.random(0, this.state.width);
+    let currentY = this.random(0, this.state.height);
+    // make sure it's highlighted and not already numbered
+    while (!this.checkHighlighted(currentX, currentY)) {
+      currentX = this.random(0, this.state.width);
+      currentY = this.random(0, this.state.height);
+    }
+
+    const offsets = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+    this.resetVisited();
+    let newVisitedState = this.visited;
+    console.log("initial visited state", this.visited);
     // set that cell as visited in another state matrix
-    // add all of the neighbors to a currently checking array
-    // but only if they haven't already been visited
+    newVisitedState[currentY][currentX] = true;
+
+    let currentlyChecking = [[currentX, currentY]];
+    console.log("starting at", currentlyChecking);
     // do this until that list is empty
+    while (currentlyChecking.length !== 0) {
+      // add all of the neighbors to a currently checking array
+      let neighbors = [];
+      for (let i = 0; i < currentlyChecking.length; i++) {
+        for (let j = 0; j < offsets.length; j++) {
+          const newX = currentlyChecking[i][0] + offsets[j][0];
+          const newY = currentlyChecking[i][1] + offsets[j][1];
+          // only if they are highlighted
+          if (this.checkHighlighted(newX, newY)) {
+            // but they haven't already been visited
+            if (!newVisitedState[newY][newX]) {
+              neighbors.push([newX, newY]);
+              newVisitedState[newY][newX] = true;
+            }
+          }
+        }
+      }
+
+      currentlyChecking = neighbors;
+      console.log("neighbors", neighbors);
+    }
+
     // check if the visited array matches the highlighted array
+    console.log("visited", newVisitedState);
+    console.log("highlighted", this.state.highlighted);
+    for (let i = 0; i < this.state.highlighted.length; i++) {
+      for (let j = 0; j < this.state.highlighted[i].length; j++) {
+        if (this.state.highlighted[i][j] !== newVisitedState[i][j]) {
+          console.log("not contiguous");
+          return false;
+        }
+      }
+    }
+
+    return true;
+
+    this.resetVisited();
+
     for (let i = 0; i < this.state.width; i++) {
       for (let j = 0; j < this.state.height; j++) {
         // if the cell is highlighted
         if (this.checkHighlighted(i, j)) {
           // check if any of the adjacent cells are highlighted
-          const adjacentHighlighted = this.adjacentHighlighted(i, j)
-          
+          const adjacentHighlighted = this.adjacentHighlighted(i, j);
+
           // if none are, it is incorrect
           if (!adjacentHighlighted) {
             return false;
@@ -202,8 +276,7 @@ class Game extends Component {
           const targetNum = parseInt(this.state.gameState[j][i]);
           let currentNum = 0;
           if (this.checkHighlighted(i, j)) {
-            currentNum = this.countVisibleCells(i, j)
-          
+            currentNum = this.countVisibleCells(i, j);
           }
           if (currentNum !== targetNum) {
             return false;
@@ -229,7 +302,7 @@ class Game extends Component {
       () => {
         this.setState({
           won: this.checkCorrect()
-        })
+        });
       }
     );
   }
@@ -249,7 +322,7 @@ class Game extends Component {
       () => {
         this.setState({
           won: this.checkCorrect()
-        })
+        });
       }
     );
   }
@@ -286,20 +359,27 @@ class Game extends Component {
     if (this.state.won) {
       return (
         <div>
-          <div>
-          Congratulations! You won.
-          </div>
-          <button onClick={() => this.resetGameState()} className="btn btn-primary">Play Again</button>
-
+          <div>Congratulations! You won.</div>
+          <button
+            onClick={() => this.resetGameState()}
+            className="btn btn-primary"
+          >
+            Play Again
+          </button>
         </div>
-      )
+      );
     }
 
     return (
       <div>
-        <button onClick={() => this.resetGameState()} className="btn btn-secondary">Restart</button>
+        <button
+          onClick={() => this.resetGameState()}
+          className="btn btn-secondary"
+        >
+          Restart
+        </button>
       </div>
-    )
+    );
   }
 
   render() {
