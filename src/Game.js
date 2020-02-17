@@ -73,8 +73,7 @@ class Game extends Component {
     }
 
     // Do this until a random number is reached
-    const totalGivenNumbers = this.random(1, totalColored);
-    console.log("total given", totalGivenNumbers);
+    const totalGivenNumbers = this.random(3, totalColored);
     for (let i = 0; i < totalGivenNumbers; i++) {
       // pick a random coordinate
       let currentX = this.random(0, this.state.width);
@@ -113,18 +112,13 @@ class Game extends Component {
 
   resetVisited() {
     const emptyMatrix = [];
-    console.log("right after initialization", emptyMatrix);
     for (let y = 0; y < this.state.height; y++) {
       emptyMatrix[y] = [];
       for (let x = 0; x < this.state.width; x++) {
         emptyMatrix[y][x] = false;
       }
-      console.log("partially generated matrix", emptyMatrix);
     }
-
-    console.log("should be resetting to ", emptyMatrix);
     this.visited = emptyMatrix;
-    console.log("resetting to ", this.visited);
   }
 
   checkExists(x, y) {
@@ -192,25 +186,33 @@ class Game extends Component {
   }
 
   checkCorrect() {
-    // pick a random highlighted cell as the starting point
-    let currentX = this.random(0, this.state.width);
-    let currentY = this.random(0, this.state.height);
-    // make sure it's highlighted and not already numbered
-    while (!this.checkHighlighted(currentX, currentY)) {
-      currentX = this.random(0, this.state.width);
-      currentY = this.random(0, this.state.height);
+    let currentX = -1;
+    let currentY = -1;
+    // loop through all of the cells
+    for (let x = 0; x < this.state.width; x++) {
+      for (let y = 0; y < this.state.height; y++) {
+        // until you find one that is highlighted
+        if (this.checkHighlighted(x, y)) {
+          currentX = x;
+          currentY = y;
+        }
+      }
+    }
+
+    if (currentX === -1 || currentY === -1) {
+      return;
     }
 
     const offsets = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
     this.resetVisited();
     let newVisitedState = this.visited;
-    console.log("initial visited state", this.visited);
+
     // set that cell as visited in another state matrix
     newVisitedState[currentY][currentX] = true;
 
     let currentlyChecking = [[currentX, currentY]];
-    console.log("starting at", currentlyChecking);
+
     // do this until that list is empty
     while (currentlyChecking.length !== 0) {
       // add all of the neighbors to a currently checking array
@@ -231,36 +233,13 @@ class Game extends Component {
       }
 
       currentlyChecking = neighbors;
-      console.log("neighbors", neighbors);
     }
 
     // check if the visited array matches the highlighted array
-    console.log("visited", newVisitedState);
-    console.log("highlighted", this.state.highlighted);
     for (let i = 0; i < this.state.highlighted.length; i++) {
       for (let j = 0; j < this.state.highlighted[i].length; j++) {
         if (this.state.highlighted[i][j] !== newVisitedState[i][j]) {
-          console.log("not contiguous");
           return false;
-        }
-      }
-    }
-
-    return true;
-
-    this.resetVisited();
-
-    for (let i = 0; i < this.state.width; i++) {
-      for (let j = 0; j < this.state.height; j++) {
-        // if the cell is highlighted
-        if (this.checkHighlighted(i, j)) {
-          // check if any of the adjacent cells are highlighted
-          const adjacentHighlighted = this.adjacentHighlighted(i, j);
-
-          // if none are, it is incorrect
-          if (!adjacentHighlighted) {
-            return false;
-          }
         }
       }
     }
@@ -278,12 +257,14 @@ class Game extends Component {
           if (this.checkHighlighted(i, j)) {
             currentNum = this.countVisibleCells(i, j);
           }
+
           if (currentNum !== targetNum) {
             return false;
           }
         }
       }
     }
+
     return true;
   }
 
