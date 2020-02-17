@@ -1,6 +1,17 @@
 import React, { Component } from "react";
 import Cell from "./Cell";
 
+// tell which cell isn't working
+
+// add a title
+// add an explanation beneath
+// add footer
+
+// make sure that it's centered and has enough margin
+// give it a max width so it never gets too wide
+// get rid of the dots
+// button to show answer
+
 class Game extends Component {
   constructor(props) {
     super(props);
@@ -8,9 +19,12 @@ class Game extends Component {
       gameState: [],
       highlighted: [],
       marked: [],
+      incorrectCells: [],
       width: 5,
       height: 5,
-      won: false
+      won: false,
+      everythingConnected: true,
+      allNumbersMatched: false
     };
 
     this.highlightCell = this.highlightCell.bind(this);
@@ -31,13 +45,16 @@ class Game extends Component {
     let newGameState = [];
     let newHighlightState = [];
     let newMarkedState = [];
+    let newIncorrectState = [];
     for (let y = 0; y < this.state.height; y++) {
       newGameState[y] = [];
       newHighlightState[y] = [];
       newMarkedState[y] = [];
+      newIncorrectState[y] = [];
       for (let x = 0; x < this.state.width; x++) {
-        newGameState[y][x] = ".";
+        newGameState[y][x] = " ";
         newHighlightState[y][x] = false;
+        newIncorrectState[y][x] = false;
         newMarkedState[y][x] = false;
       }
     }
@@ -81,7 +98,7 @@ class Game extends Component {
       // make sure it's highlighted and not already numbered
       while (
         !this.checkHighlighted(currentX, currentY) ||
-        this.state.gameState[currentY][currentX] !== "."
+        this.state.gameState[currentY][currentX] !== " "
       ) {
         currentX = this.random(0, this.state.width);
         currentY = this.random(0, this.state.height);
@@ -102,12 +119,18 @@ class Game extends Component {
     }
 
     this.resetVisited();
-    this.setState({
-      gameState: newGameState,
-      highlighted: newHighlightState,
-      marked: newMarkedState,
-      won: false
-    });
+    this.setState(
+      {
+        gameState: newGameState,
+        highlighted: newHighlightState,
+        marked: newMarkedState,
+        won: false,
+        allNumbersMatched: false,
+        everythingConnected: true,
+        incorrectCells: newIncorrectState
+      },
+      () => this.checkCorrect()
+    );
   }
 
   resetVisited() {
@@ -239,19 +262,26 @@ class Game extends Component {
     for (let i = 0; i < this.state.highlighted.length; i++) {
       for (let j = 0; j < this.state.highlighted[i].length; j++) {
         if (this.state.highlighted[i][j] !== newVisitedState[i][j]) {
+          this.setState({
+            everythingConnected: false
+          });
           return false;
         }
       }
     }
 
-    // check each number has the correct sum orthogonally
+    this.setState({
+      everythingConnected: true
+    });
 
+    let everythingCorrect = true;
+    // check each number has the correct sum orthogonally
     for (let i = 0; i < this.state.width; i++) {
       for (let j = 0; j < this.state.height; j++) {
         // if the cell is a number
         // count the number of cells with the same x
         // add the number with the y axis
-        if (this.state.gameState[j][i] !== ".") {
+        if (this.state.gameState[j][i] !== " ") {
           const targetNum = parseInt(this.state.gameState[j][i]);
           let currentNum = 0;
           if (this.checkHighlighted(i, j)) {
@@ -259,12 +289,34 @@ class Game extends Component {
           }
 
           if (currentNum !== targetNum) {
-            return false;
+            this.setState(prevState => {
+              let newIncorrectState = prevState.incorrectCells;
+              newIncorrectState[j][i] = true;
+              return {
+                allNumbersMatched: false,
+                incorrectCells: newIncorrectState
+              };
+            });
+            everythingCorrect = false;
+          } else {
+            this.setState(prevState => {
+              let newIncorrectState = prevState.incorrectCells;
+              newIncorrectState[j][i] = false;
+              return {
+                incorrectCells: newIncorrectState
+              };
+            });
           }
         }
       }
     }
 
+    if (!everythingCorrect) {
+      return false;
+    }
+    this.setState({
+      allNumbersMatched: true
+    });
     return true;
   }
 
@@ -317,6 +369,7 @@ class Game extends Component {
             markFunction={this.markCell}
             highlighted={this.state.highlighted[yIndex][index]}
             marked={this.state.marked[yIndex][index]}
+            incorrect={this.state.incorrectCells[yIndex][index]}
             x={index}
             y={yIndex}
             value={item}
@@ -328,9 +381,22 @@ class Game extends Component {
 
   getGameDisplay() {
     return (
-      <div className="container-fluid">
+      <div className="container-fluid border border-dark">
         {this.state.gameState.map((item, index) =>
           this.getRowDisplay(item, index)
+        )}
+      </div>
+    );
+  }
+
+  getInfoDisplay() {
+    return (
+      <div>
+        {!this.state.allNumbersMatched && (
+          <p>not all of the numbers can see the correct number of cells</p>
+        )}
+        {!this.state.everythingConnected && (
+          <p>all of the cells must be connected</p>
         )}
       </div>
     );
@@ -367,7 +433,12 @@ class Game extends Component {
     return (
       <div>
         {this.getGameDisplay()}
-        {this.getWinDisplay()}
+        <div className="container-fluid mt-3">
+          <div className="row">
+            <div className="col-8">{this.getInfoDisplay()}</div>
+            <div className="col-4">{this.getWinDisplay()}</div>
+          </div>
+        </div>
       </div>
     );
   }
