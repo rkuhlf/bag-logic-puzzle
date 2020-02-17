@@ -1,4 +1,4 @@
-# bag-logic-puzzle
+# Bag Logic Puzzle
 The bag logic puzzle is a Nikoli puzzle and is played by highlighted cells in a rectangular grid. The objective is to connect the highlights in such a way that all of the numbered cells can "see" the given number of highlights.
 
 
