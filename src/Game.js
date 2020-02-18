@@ -442,7 +442,7 @@ class Game extends Component {
 
   render() {
     return (
-      <div>
+      <div id="game" name="game">
         {this.getGameDisplay()}
         <div className="container-fluid mt-3">{this.getWinDisplay()}</div>
       </div>
