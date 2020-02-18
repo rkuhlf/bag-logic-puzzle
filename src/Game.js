@@ -1,15 +1,12 @@
 import React, { Component } from "react";
 import Cell from "./Cell";
 
-// tell which cell isn't working
+// allow the user to change the size of the board
 
-// add a title
-// add an explanation beneath
+// add history beneath
 // add footer
 
-// make sure that it's centered and has enough margin
 // give it a max width so it never gets too wide
-// get rid of the dots
 // button to show answer
 
 class Game extends Component {
@@ -209,6 +206,7 @@ class Game extends Component {
   }
 
   checkCorrect() {
+    console.log("checking correct");
     let currentX = -1;
     let currentY = -1;
     // loop through all of the cells
@@ -221,58 +219,62 @@ class Game extends Component {
         }
       }
     }
+    console.log("made it to the end");
 
-    if (currentX === -1 || currentY === -1) {
-      return;
-    }
+    if (currentX !== -1 && currentY !== -1) {
+      const offsets = [[-1, 0], [1, 0], [0, -1], [0, 1]];
 
-    const offsets = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+      this.resetVisited();
+      let newVisitedState = this.visited;
 
-    this.resetVisited();
-    let newVisitedState = this.visited;
+      // set that cell as visited in another state matrix
+      newVisitedState[currentY][currentX] = true;
 
-    // set that cell as visited in another state matrix
-    newVisitedState[currentY][currentX] = true;
+      let currentlyChecking = [[currentX, currentY]];
 
-    let currentlyChecking = [[currentX, currentY]];
-
-    // do this until that list is empty
-    while (currentlyChecking.length !== 0) {
-      // add all of the neighbors to a currently checking array
-      let neighbors = [];
-      for (let i = 0; i < currentlyChecking.length; i++) {
-        for (let j = 0; j < offsets.length; j++) {
-          const newX = currentlyChecking[i][0] + offsets[j][0];
-          const newY = currentlyChecking[i][1] + offsets[j][1];
-          // only if they are highlighted
-          if (this.checkHighlighted(newX, newY)) {
-            // but they haven't already been visited
-            if (!newVisitedState[newY][newX]) {
-              neighbors.push([newX, newY]);
-              newVisitedState[newY][newX] = true;
+      // do this until that list is empty
+      while (currentlyChecking.length !== 0) {
+        // add all of the neighbors to a currently checking array
+        let neighbors = [];
+        for (let i = 0; i < currentlyChecking.length; i++) {
+          for (let j = 0; j < offsets.length; j++) {
+            const newX = currentlyChecking[i][0] + offsets[j][0];
+            const newY = currentlyChecking[i][1] + offsets[j][1];
+            // only if they are highlighted
+            if (this.checkHighlighted(newX, newY)) {
+              // but they haven't already been visited
+              if (!newVisitedState[newY][newX]) {
+                neighbors.push([newX, newY]);
+                newVisitedState[newY][newX] = true;
+              }
             }
+          }
+        }
+
+        currentlyChecking = neighbors;
+      }
+
+      // check if the visited array matches the highlighted array
+      for (let i = 0; i < this.state.highlighted.length; i++) {
+        for (let j = 0; j < this.state.highlighted[i].length; j++) {
+          if (this.state.highlighted[i][j] !== newVisitedState[i][j]) {
+            this.setState({
+              everythingConnected: false
+            });
+            return false;
           }
         }
       }
 
-      currentlyChecking = neighbors;
+      this.setState({
+        everythingConnected: true
+      });
+    } else {
+      this.state.everythingConnected = false;
+      this.setState({
+        everythingConnected: false
+      });
     }
-
-    // check if the visited array matches the highlighted array
-    for (let i = 0; i < this.state.highlighted.length; i++) {
-      for (let j = 0; j < this.state.highlighted[i].length; j++) {
-        if (this.state.highlighted[i][j] !== newVisitedState[i][j]) {
-          this.setState({
-            everythingConnected: false
-          });
-          return false;
-        }
-      }
-    }
-
-    this.setState({
-      everythingConnected: true
-    });
 
     let everythingCorrect = true;
     // check each number has the correct sum orthogonally
@@ -317,7 +319,11 @@ class Game extends Component {
     this.setState({
       allNumbersMatched: true
     });
-    return true;
+    if (this.state.everythingConnected) {
+      return true;
+    }
+
+    return false;
   }
 
   highlightCell(x, y) {
@@ -405,7 +411,7 @@ class Game extends Component {
   getWinDisplay() {
     if (this.state.won) {
       return (
-        <div>
+        <div className="text-center">
           <div>Congratulations! You won.</div>
           <button
             onClick={() => this.resetGameState()}
@@ -418,13 +424,18 @@ class Game extends Component {
     }
 
     return (
-      <div>
-        <button
-          onClick={() => this.resetGameState()}
-          className="btn btn-secondary"
-        >
-          Restart
-        </button>
+      <div className="row">
+        <div className="col-8">{this.getInfoDisplay()}</div>
+        <div className="col-4">
+          {
+            <button
+              onClick={() => this.resetGameState()}
+              className="btn btn-secondary"
+            >
+              Restart
+            </button>
+          }
+        </div>
       </div>
     );
   }
@@ -433,12 +444,7 @@ class Game extends Component {
     return (
       <div>
         {this.getGameDisplay()}
-        <div className="container-fluid mt-3">
-          <div className="row">
-            <div className="col-8">{this.getInfoDisplay()}</div>
-            <div className="col-4">{this.getWinDisplay()}</div>
-          </div>
-        </div>
+        <div className="container-fluid mt-3">{this.getWinDisplay()}</div>
       </div>
     );
   }
